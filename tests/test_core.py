@@ -1,0 +1,71 @@
+import tempfile
+import unittest
+from pathlib import Path
+from driftguard.core import profile, compare
+from driftguard.__main__ import main
+
+
+class DriftGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def csv(self, name, text):
+        path = self.root / name
+        path.write_text(text, encoding='utf-8')
+        return path
+
+    def test_profile(self):
+        p = profile(self.csv('a.csv', 'id,price,name\n1,1.2,A\n2,,B\n'))
+        self.assertEqual(p['columns']['id']['type'], 'integer')
+        self.assertEqual(p['columns']['price']['type'], 'number')
+        self.assertEqual(p['columns']['price']['nulls'], 1)
+
+    def test_removed_column_breaks(self):
+        old = profile(self.csv('a.csv', 'id,name\n1,A\n'))
+        new = profile(self.csv('b.csv', 'id\n1\n'))
+        self.assertTrue(compare(old, new)['breaking'])
+
+    def test_added_column_is_informational(self):
+        old = profile(self.csv('a.csv', 'id\n1\n'))
+        new = profile(self.csv('b.csv', 'id,name\n1,A\n'))
+        self.assertFalse(compare(old, new)['breaking'])
+
+    def test_type_widening(self):
+        old = profile(self.csv('a.csv', 'id\n1\n'))
+        new = profile(self.csv('b.csv', 'id\n1.5\n'))
+        self.assertFalse(compare(old, new)['breaking'])
+
+    def test_type_change_breaks(self):
+        old = profile(self.csv('a.csv', 'id\n1\n'))
+        new = profile(self.csv('b.csv', 'id\nabc\n'))
+        self.assertTrue(compare(old, new)['breaking'])
+
+    def test_new_null_breaks(self):
+        old = profile(self.csv('a.csv', 'id\n1\n'))
+        new = profile(self.csv('b.csv', 'id\n\n'))
+        self.assertTrue(compare(old, new)['breaking'])
+
+    def test_malformed_row_rejected(self):
+        with self.assertRaises(ValueError):
+            profile(self.csv('a.csv', 'id,name\n1\n'))
+
+    def test_cli_exit_codes(self):
+        original = self.csv('a.csv', 'id\n1\n')
+        changed = self.csv('b.csv', 'id\ntext\n')
+        baseline = self.root / 'schema.json'
+        self.assertEqual(main(['snapshot', str(original), '--output', str(baseline)]), 0)
+        self.assertEqual(main(['check', str(changed), '--baseline', str(baseline)]), 2)
+
+    def test_limit(self):
+        p = profile(self.csv('a.csv', 'id\n1\n2\n'), 1)
+        self.assertEqual(p['rows_sampled'], 1)
+
+    def test_duplicate_header_rejected(self):
+        with self.assertRaises(ValueError):
+            profile(self.csv('a.csv', 'id,id\n1,2\n'))
+
+
+if __name__ == '__main__':
+    unittest.main()
