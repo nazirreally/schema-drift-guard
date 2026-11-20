@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 from .core import profile, compare, read_json, write_json
+from .policy import load_policy, apply_policy
 
 
 def main(argv=None):
@@ -13,6 +14,7 @@ def main(argv=None):
     check = sub.add_parser('check', help='Compare CSV against baseline')
     check.add_argument('csv')
     check.add_argument('--baseline', required=True)
+    check.add_argument('--policy', help='Optional JSON data contract policy')
     for command in (snapshot, check):
         command.add_argument('--sample-limit', type=int, default=10000)
     args = parser.parse_args(argv)
@@ -23,6 +25,8 @@ def main(argv=None):
             print(f'Baseline saved to {args.output}')
             return 0
         result = compare(read_json(args.baseline), current)
+        if args.policy:
+            result = apply_policy(result, current, load_policy(args.policy))
         print(json.dumps(result, indent=2))
         return 2 if result['breaking'] else 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
