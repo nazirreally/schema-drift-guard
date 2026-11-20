@@ -1,0 +1,8 @@
+{
+  "required_columns": ["customer_id", "event_time"],
+  "rules": [
+    {"column": "metadata_*", "change": "added", "severity": "ignore"},
+    {"column": "customer_id", "change": "type", "severity": "breaking"},
+    {"column": "*", "change": "added", "severity": "informational"}
+  ]
+}
