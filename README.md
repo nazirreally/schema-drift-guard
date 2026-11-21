@@ -120,6 +120,7 @@ src/driftguard/
 tests/
   test_core.py   Core profiling and CLI behavior
   test_policy.py Policy parsing and rule precedence
+  test_validation.py Defensive CSV and baseline validation
 examples/
   policy.json    Example contract
 .github/workflows/tests.yml
@@ -128,7 +129,7 @@ pyproject.toml
 
 ## Verification
 
-The policy module passed **7/7 new unit tests locally** on 20 Nov 2026. Original tests and GitHub Actions were not rerun as part of this update; the workflow badge reflects GitHub's actual status, not an asserted pass.
+The defensive input suite passed **5/5 tests locally** on 21 Nov 2026 in an isolated source harness. The full repository test suite and GitHub Actions have not been verified for this change; the workflow badge reflects GitHub's actual status, not an asserted pass.
 
 Run the complete suite yourself with:
 
@@ -139,7 +140,8 @@ python -m unittest discover -s tests -v
 ## Design trade-offs
 
 - **Streaming and bounded:** handles large files without holding all records in memory, but only the sampled rows influence type inference.
-- **Conservative typing:** infers integer, number, string, and unknown; leading-zero IDs may be inferred as integers.
+- **Conservative typing:** infers integer, number, string, and unknown; leading-zero IDs may be inferred as integers. Nonfinite numeric tokens (NaN, Infinity, overflowed exponent notation) are treated as strings, not valid numbers.
+- **Defensive contracts:** rejects blank CSV header fields and malformed baseline snapshots (missing/invalid row counts, unknown types, impossible null counts) with a controlled CLI error rather than a traceback.
 - **Schema vs semantics:** detects observed structural changes, not uniqueness, currency consistency, referential integrity, or source freshness.
 - **Null semantics:** flags newly observed nulls in previously null-free columns; it does not compute statistical confidence.
 - **Policy flexibility:** glob rules let teams tolerate harmless metadata changes, but broad ignore rules can conceal real regressions.
