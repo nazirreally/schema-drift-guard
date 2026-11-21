@@ -1,7 +1,10 @@
 import csv
 import json
+import math
 from collections import Counter
 from pathlib import Path
+
+VALID_TYPES = {'integer', 'number', 'string', 'unknown'}
 
 
 def profile(path, sample_limit=10000):
@@ -11,7 +14,7 @@ def profile(path, sample_limit=10000):
     with open(path, newline='', encoding='utf-8-sig') as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames
-        if not fields or len(set(fields)) != len(fields):
+        if not fields or any(not field or not field.strip() for field in fields) or len(set(fields)) != len(fields):
             raise ValueError('CSV must have a nonempty, unique header')
         stats = {field: {'nulls': 0, 'types': Counter()} for field in fields}
         rows = 0
@@ -31,8 +34,8 @@ def profile(path, sample_limit=10000):
                     kind = 'integer'
                 except ValueError:
                     try:
-                        float(value)
-                        kind = 'number'
+                        number = float(value)
+                        kind = 'number' if math.isfinite(number) else 'string'
                     except ValueError:
                         kind = 'string'
                 stats[field]['types'][kind] += 1
@@ -70,6 +73,14 @@ def read_json(path):
         data = json.load(handle)
     if not isinstance(data, dict) or not isinstance(data.get('columns'), dict):
         raise ValueError('Invalid baseline: missing columns object')
+    rows = data.get('rows_sampled')
+    if type(rows) is not int or rows < 0:
+        raise ValueError('Invalid baseline: rows_sampled must be a nonnegative integer')
+    for name, info in data['columns'].items():
+        if (not isinstance(name, str) or not name.strip() or not isinstance(info, dict)
+                or info.get('type') not in VALID_TYPES or type(info.get('nulls')) is not int
+                or not 0 <= info['nulls'] <= rows):
+            raise ValueError(f'Invalid baseline column: {name!r}')
     return data
 
 
