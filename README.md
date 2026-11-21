@@ -129,7 +129,7 @@ pyproject.toml
 
 ## Verification
 
-The defensive input suite passed **5/5 tests locally** on 21 Nov 2026 in an isolated source harness. The full repository test suite and GitHub Actions have not been verified for this change; the workflow badge reflects GitHub's actual status, not an asserted pass.
+The defensive input suite passed **5/5 tests locally** on 21 Nov 2026 in an isolated source harness. The [21 November 2026 GitHub Actions run](https://github.com/nazirreally/schema-drift-guard/actions/runs/44938307603) completed successfully. The workflow executes the full unittest suite across Python 3.10, 3.12 and 3.13; the badge shows the current workflow status.
 
 Run the complete suite yourself with:
 
