@@ -112,6 +112,18 @@ The HTML report includes an overall pass/fail status, breaking/informational cou
 
 The CLI writes the HTML before returning the existing exit code: 0 for accepted, 2 for breaking changes, and 1 for errors. Filesystem errors when writing the report are treated as CLI errors rather than silently ignored.
 
+### Persist JSON audit artifacts for automation
+
+The `check` command can now save the same machine-readable report that it prints to standard output:
+
+```bash
+python -m driftguard check incoming.csv --baseline schema.json \
+  --json-report audit.json --html-report audit.html
+# Exit code 2 for breaking drift; audit.json and audit.html are still written.
+```
+
+The JSON artifact contains the `breaking` boolean and detailed `changes` array. It is suitable for CI artifact upload, programmatic review, and integration with other tooling. Reports are also written when no drift is found. An invalid destination returns exit code 1 rather than silently dropping the audit. The CLI does **not** guarantee atomic multi-artifact writes: if one destination fails, another may already exist.
+
 ## CI integration
 
 Commit `schema.json` and `policy.json` with the pipeline. In your ingestion job:
@@ -175,3 +187,10 @@ python -m unittest discover -s tests -v
 ### 2026-11-22 — HTML audit delivery
 
 Implemented a self-contained HTML report renderer, `check --html-report` CLI integration, and five regression tests for escaping, report status, no-change state, filesystem output, and the breaking-change exit code. The renderer's four core tests passed in a local isolated harness before publication. The complete GitHub repository suite and the new end-to-end CLI test require CI confirmation; the existing badge reflects GitHub Actions rather than an assumed result.
+
+
+### 2026-11-22 — Machine-readable CI audit artifacts
+
+Added `check --json-report <path>` to persist the JSON contract findings while retaining stdout output and exit code semantics. Added three CLI regression tests for breaking drift, clean comparisons and invalid output destinations. This is a standalone extension of the existing developer tool, not a new repository.
+
+**Verification note:** Source changes and tests are committed, but the complete suite and latest GitHub Actions run have not yet been independently confirmed. Run `python -m unittest discover -s tests -v` and inspect the [workflow](https://github.com/nazirreally/schema-drift-guard/actions/workflows/tests.yml) before treating this revision as verified.
