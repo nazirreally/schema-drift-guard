@@ -3,6 +3,7 @@ import json
 import sys
 from .core import profile, compare, read_json, write_json
 from .policy import load_policy, apply_policy
+from .report import write_html
 
 
 def main(argv=None):
@@ -15,6 +16,7 @@ def main(argv=None):
     check.add_argument('csv')
     check.add_argument('--baseline', required=True)
     check.add_argument('--policy', help='Optional JSON data contract policy')
+    check.add_argument('--html-report', help='Write a standalone HTML audit report')
     for command in (snapshot, check):
         command.add_argument('--sample-limit', type=int, default=10000)
     args = parser.parse_args(argv)
@@ -24,9 +26,12 @@ def main(argv=None):
             write_json(args.output, current)
             print(f'Baseline saved to {args.output}')
             return 0
-        result = compare(read_json(args.baseline), current)
+        baseline = read_json(args.baseline)
+        result = compare(baseline, current)
         if args.policy:
             result = apply_policy(result, current, load_policy(args.policy))
+        if args.html_report:
+            write_html(args.html_report, result, baseline, current)
         print(json.dumps(result, indent=2))
         return 2 if result['breaking'] else 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
