@@ -17,6 +17,7 @@ def main(argv=None):
     check.add_argument('--baseline', required=True)
     check.add_argument('--policy', help='Optional JSON data contract policy')
     check.add_argument('--html-report', help='Write a standalone HTML audit report')
+    check.add_argument('--json-report', help='Write machine-readable audit JSON to a file')
     for command in (snapshot, check):
         command.add_argument('--sample-limit', type=int, default=10000)
     args = parser.parse_args(argv)
@@ -32,6 +33,8 @@ def main(argv=None):
             result = apply_policy(result, current, load_policy(args.policy))
         if args.html_report:
             write_html(args.html_report, result, baseline, current)
+        if args.json_report:
+            write_json(args.json_report, result)
         print(json.dumps(result, indent=2))
         return 2 if result['breaking'] else 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
