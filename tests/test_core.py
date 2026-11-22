@@ -1,4 +1,6 @@
 import tempfile
+import json
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 from driftguard.core import profile, compare
@@ -57,6 +59,34 @@ class DriftGuardTests(unittest.TestCase):
         baseline = self.root / 'schema.json'
         self.assertEqual(main(['snapshot', str(original), '--output', str(baseline)]), 0)
         self.assertEqual(main(['check', str(changed), '--baseline', str(baseline)]), 2)
+
+    def test_json_report_is_persisted_on_breaking_drift(self):
+        original = self.csv('baseline.csv', 'id,amount\\n1,12.5\\n')
+        changed = self.csv('incoming.csv', 'id,amount\\n2,unknown\\n')
+        baseline = self.root / 'baseline.json'
+        report = self.root / 'audit.json'
+        self.assertEqual(main(['snapshot', str(original), '--output', str(baseline)]), 0)
+        self.assertEqual(main(['check', str(changed), '--baseline', str(baseline),
+                               '--json-report', str(report)]), 2)
+        data = json.loads(report.read_text(encoding='utf-8'))
+        self.assertTrue(data['breaking'])
+        self.assertTrue(any(change['column'] == 'amount' for change in data['changes']))
+
+    def test_json_report_is_persisted_when_no_drift(self):
+        source = self.csv('baseline.csv', 'id\\n1\\n')
+        baseline = self.root / 'baseline.json'
+        report = self.root / 'audit.json'
+        self.assertEqual(main(['snapshot', str(source), '--output', str(baseline)]), 0)
+        self.assertEqual(main(['check', str(source), '--baseline', str(baseline),
+                               '--json-report', str(report)]), 0)
+        self.assertEqual(json.loads(report.read_text())['changes'], [])
+
+    def test_json_report_write_failure_returns_error(self):
+        source = self.csv('baseline.csv', 'id\\n1\\n')
+        baseline = self.root / 'baseline.json'
+        self.assertEqual(main(['snapshot', str(source), '--output', str(baseline)]), 0)
+        self.assertEqual(main(['check', str(source), '--baseline', str(baseline),
+                               '--json-report', str(self.root / 'missing' / 'audit.json')]), 1)
 
     def test_limit(self):
         p = profile(self.csv('a.csv', 'id\n1\n2\n'), 1)
