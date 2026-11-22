@@ -61,8 +61,8 @@ class DriftGuardTests(unittest.TestCase):
         self.assertEqual(main(['check', str(changed), '--baseline', str(baseline)]), 2)
 
     def test_json_report_is_persisted_on_breaking_drift(self):
-        original = self.csv('baseline.csv', 'id,amount\\n1,12.5\\n')
-        changed = self.csv('incoming.csv', 'id,amount\\n2,unknown\\n')
+        original = self.csv('baseline.csv', 'id,amount\n1,12.5\n')
+        changed = self.csv('incoming.csv', 'id,amount\n2,unknown\n')
         baseline = self.root / 'baseline.json'
         report = self.root / 'audit.json'
         self.assertEqual(main(['snapshot', str(original), '--output', str(baseline)]), 0)
@@ -73,7 +73,7 @@ class DriftGuardTests(unittest.TestCase):
         self.assertTrue(any(change['column'] == 'amount' for change in data['changes']))
 
     def test_json_report_is_persisted_when_no_drift(self):
-        source = self.csv('baseline.csv', 'id\\n1\\n')
+        source = self.csv('baseline.csv', 'id\n1\n')
         baseline = self.root / 'baseline.json'
         report = self.root / 'audit.json'
         self.assertEqual(main(['snapshot', str(source), '--output', str(baseline)]), 0)
@@ -82,7 +82,7 @@ class DriftGuardTests(unittest.TestCase):
         self.assertEqual(json.loads(report.read_text())['changes'], [])
 
     def test_json_report_write_failure_returns_error(self):
-        source = self.csv('baseline.csv', 'id\\n1\\n')
+        source = self.csv('baseline.csv', 'id\n1\n')
         baseline = self.root / 'baseline.json'
         self.assertEqual(main(['snapshot', str(source), '--output', str(baseline)]), 0)
         self.assertEqual(main(['check', str(source), '--baseline', str(baseline),
