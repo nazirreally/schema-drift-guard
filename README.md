@@ -99,6 +99,19 @@ An example contract is included at [examples/policy.json](examples/policy.json).
 | 1 | Invalid CSV, baseline, policy, or filesystem error |
 | 2 | Breaking schema or contract violation |
 
+## Standalone HTML audit reports
+
+Generate a polished, offline-readable contract audit alongside the JSON output:
+
+```bash
+python -m driftguard check incoming.csv --baseline schema.json --policy policy.json --html-report audit.html
+# Open audit.html in any browser. Exit 2 still indicates a breaking violation.
+```
+
+The HTML report includes an overall pass/fail status, breaking/informational counts, baseline and current column counts, a detailed change register, and sample sizes. It uses embedded CSS only: **no CDN, JavaScript, or external network requests**. CSV column names and change text are HTML-escaped to prevent untrusted feed headers from injecting markup. Policy-ignored findings remain excluded from the report, just as in JSON.
+
+The CLI writes the HTML before returning the existing exit code: 0 for accepted, 2 for breaking changes, and 1 for errors. Filesystem errors when writing the report are treated as CLI errors rather than silently ignored.
+
 ## CI integration
 
 Commit `schema.json` and `policy.json` with the pipeline. In your ingestion job:
@@ -114,11 +127,11 @@ This repository's own [test workflow](.github/workflows/tests.yml) exercises the
 
 ```text
 src/driftguard/
-  core.py        CSV profiling, comparison, JSON baseline
+  core.py        CSV profiling, comparison, JSON baseline\n  report.py      Portable, escaped HTML audit renderer
   policy.py      Ordered contract rules and required columns
   __main__.py    snapshot/check command-line interface
 tests/
-  test_core.py   Core profiling and CLI behavior
+  test_core.py   Core profiling and CLI behavior\n  test_report.py HTML output, injection defense, CLI exit codes
   test_policy.py Policy parsing and rule precedence
   test_validation.py Defensive CSV and baseline validation
 examples/
@@ -151,9 +164,14 @@ python -m unittest discover -s tests -v
 
 - Versioned policy schema and richer validation errors
 - Timestamp/date inference with explicit opt-in
-- HTML reports and historical trend comparisons
+- Historical trend comparisons and richer historical audit metadata
 - Optional GitHub Action packaging
 
 ## License
 
 [MIT](LICENSE)
+
+
+### 2026-11-22 — HTML audit delivery
+
+Implemented a self-contained HTML report renderer, `check --html-report` CLI integration, and five regression tests for escaping, report status, no-change state, filesystem output, and the breaking-change exit code. The renderer's four core tests passed in a local isolated harness before publication. The complete GitHub repository suite and the new end-to-end CLI test require CI confirmation; the existing badge reflects GitHub Actions rather than an assumed result.
