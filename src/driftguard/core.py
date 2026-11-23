@@ -1,4 +1,5 @@
 import csv
+import gzip
 import json
 import math
 from collections import Counter
@@ -11,7 +12,8 @@ def profile(path, sample_limit=10000):
     """Profile a CSV without loading it entirely into memory."""
     if sample_limit < 1:
         raise ValueError('sample_limit must be positive')
-    with open(path, newline='', encoding='utf-8-sig') as handle:
+    opener = gzip.open if str(path).lower().endswith('.gz') else open
+    with opener(path, mode='rt', newline='', encoding='utf-8-sig') as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames
         if not fields or any(not field or not field.strip() for field in fields) or len(set(fields)) != len(fields):
