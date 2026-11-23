@@ -4,7 +4,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/runtime_dependencies-zero-0f766e)
 
-**Fail fast when incoming CSV feeds violate your data contract.** A streaming, dependency-free Python CLI that profiles source files, versions their observed schemas, detects incompatible changes, and applies explicit per-column policies.
+**Fail fast when incoming CSV feeds violate your data contract.** Supports plain `.csv` and gzip-compressed `.csv.gz` sources without writing temporary decompressed files. A streaming, dependency-free Python CLI that profiles source files, versions their observed schemas, detects incompatible changes, and applies explicit per-column policies.
 
 > **Use case:** A nightly supplier feed silently changes `amount` from numeric to free text. Instead of corrupting downstream dashboards, a CI job reports the drift and exits with code 2.
 
@@ -30,7 +30,7 @@ flowchart LR
 | Layer | Implementation |
 |---|---|
 | Runtime | Python 3.10+ standard library only |
-| Input | UTF-8 / UTF-8-BOM CSV |
+| Input | UTF-8 / UTF-8-BOM CSV and `.csv.gz` (gzip) |
 | Profiling | Streaming `csv.DictReader`, bounded by `--sample-limit` |
 | Contract | JSON schema snapshot and optional policy |
 | Policy engine | Ordered, glob-based column matching via `fnmatch` |
@@ -51,6 +51,18 @@ python -m driftguard check incoming.csv --baseline schema.json
 ```
 
 For Windows PowerShell, create the two sample files with `Set-Content` and run the same Python commands.
+
+### Compressed CSV feeds
+
+The same `snapshot` and `check` commands accept gzip-compressed CSV files directly. Decompression happens incrementally during streaming profiling; the `--sample-limit` bound still applies to sampled rows.
+
+```bash
+python -c "import gzip; gzip.open('incoming.csv.gz', 'wb').write(b'id,amount\\n2,unknown\\n')"
+python -m driftguard check incoming.csv.gz --baseline schema.json --json-report compressed-audit.json
+# Exit 2 when the compressed feed violates the existing schema
+```
+
+Compression is detected by the `.gz` filename suffix, not magic bytes. Unsupported compression formats, encrypted files and archives containing multiple files are not supported. The sample limit bounds profiled rows, **not compressed or decompressed byte count**; only process trusted or resource-limited feeds.
 
 ### Enforce a data contract
 
@@ -194,3 +206,8 @@ Implemented a self-contained HTML report renderer, `check --html-report` CLI int
 Added `check --json-report <path>` to persist the JSON contract findings while retaining stdout output and exit code semantics. Added three CLI regression tests for breaking drift, clean comparisons and invalid output destinations. This is a standalone extension of the existing developer tool, not a new repository.
 
 **Verification note:** Source changes and tests are committed, but the complete suite and latest GitHub Actions run have not yet been independently confirmed. Run `python -m unittest discover -s tests -v` and inspect the [workflow](https://github.com/nazirreally/schema-drift-guard/actions/workflows/tests.yml) before treating this revision as verified.
+
+
+### 2026-11-23 — Compressed source support
+
+Added native gzip CSV input support to the existing streaming profiler, shared by both snapshot and check. No extra runtime dependencies or temporary decompression files are required. Added regression tests for plain-versus-gzip profile equivalence, compressed baseline/check with JSON audit, and controlled errors on invalid gzip. The full suite and latest GitHub Actions outcome require independent verification; publication alone does not establish CI success.
