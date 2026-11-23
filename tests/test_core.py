@@ -90,7 +90,7 @@ class DriftGuardTests(unittest.TestCase):
                                '--json-report', str(self.root / 'missing' / 'audit.json')]), 1)
 
     def test_gzip_profile_matches_plain_csv(self):
-        raw = 'id,amount,name\\n1,12.5,A\\n2,,B\\n'
+        raw = 'id,amount,name\n1,12.5,A\n2,,B\n'
         plain = self.csv('feed.csv', raw)
         compressed = self.root / 'feed.csv.gz'
         with gzip.open(compressed, 'wt', encoding='utf-8') as stream:
@@ -102,9 +102,9 @@ class DriftGuardTests(unittest.TestCase):
         original = self.root / 'baseline.csv.gz'
         changed = self.root / 'incoming.csv.gz'
         with gzip.open(original, 'wt', encoding='utf-8') as stream:
-            stream.write('id,amount\\n1,12.5\\n')
+            stream.write('id,amount\n1,12.5\n')
         with gzip.open(changed, 'wt', encoding='utf-8') as stream:
-            stream.write('id,amount\\n2,unknown\\n')
+            stream.write('id,amount\n2,unknown\n')
         baseline = self.root / 'baseline.json'
         report = self.root / 'audit.json'
         self.assertEqual(main(['snapshot', str(original), '--output', str(baseline)]), 0)
@@ -113,7 +113,7 @@ class DriftGuardTests(unittest.TestCase):
         self.assertTrue(json.loads(report.read_text())['breaking'])
 
     def test_invalid_gzip_is_controlled_cli_error(self):
-        invalid = self.csv('invalid.csv.gz', 'id\\n1\\n')
+        invalid = self.csv('invalid.csv.gz', 'id\n1\n')
         self.assertEqual(main(['snapshot', str(invalid),
                                '--output', str(self.root / 'baseline.json')]), 1)
 
